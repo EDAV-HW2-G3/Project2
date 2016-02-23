@@ -123,12 +123,14 @@ dataFlood$`Main cause` <- gsub("Heavy Rain Snowmelt Dam B",
                                "Heavy Rain, Snowmelt, Dam B", dataFlood$`Main cause`)
 dataFlood$`Main cause` <- gsub("Avalance Breach", 
                                "Avalanche related", dataFlood$`Main cause`)
+dataFlood$`Main cause` <- gsub("Avalanche related", 
+                               "Avalanche", dataFlood$`Main cause`)
 
 dataFlood$`Main cause` <- gsub("Dam/Levy, break or release",
                                "Dam/Levee - Break or Release", dataFlood$`Main cause`)
 dataFlood$`Main cause` <- gsub("Cylone Tasha, Monsoon Rain, Cyclone", 
-                               "Cylone, Monsoonal Rain", dataFlood$`Main cause`)
-dataFlood$`Main cause` <- gsub("see notes", "Volcano", dataFlood$`Main cause`)
+                               "Tropical Cyclone, Monsoonal Rain", dataFlood$`Main cause`)
+dataFlood$`Main cause` <- gsub("see notes", "ETC", dataFlood$`Main cause`) # Volcano
 dataFlood$`Main cause` <- gsub("Hgh", "High", dataFlood$`Main cause`)
 
 to_replace <- grepl("Ice+", dataFlood$`Main cause`, perl=TRUE)
@@ -145,7 +147,6 @@ dataFlood$`Main cause`[to_replace] <- "Tropical Cyclone"
 
 to_replace <- grepl("Typhoon+", dataFlood$`Main cause`, perl=TRUE)
 dataFlood$`Main cause`[to_replace] <- "Typhoon"
-
 
 
 
@@ -173,17 +174,19 @@ df1$`Main cause_2`[to_replace] <- "Snowmelt"
 to_replace <- grepl("Snow+", df1$`Main cause_3`, perl=TRUE)
 df1$`Main cause_3`[to_replace] <- "Snowmelt"
 
-to_replace <- grepl("Dam+", df1$`Main cause_1`, perl=TRUE)
-df1$`Main cause_1`[to_replace] <- "Dam/Levee - Break or Release"
-to_replace <- grepl("Dam+", df1$`Main cause_2`, perl=TRUE)
-df1$`Main cause_2`[to_replace] <- "Dam/Levee - Break or Release"
-to_replace <- grepl("Dam+", df1$`Main cause_3`, perl=TRUE)
-df1$`Main cause_3`[to_replace] <- "Dam/Levee - Break or Release"
-
 to_replace <- grepl("Levee failure", df1$`Main cause_1`, perl=TRUE)
 df1$`Main cause_1`[to_replace] <- "Dam/Levee - Break or Release"
+
+to_replace <- grepl("Dam+", df1$`Main cause_1`, perl=TRUE)
+df1$`Main cause_1`[to_replace] <- "Dam/Levee"
+to_replace <- grepl("Dam+", df1$`Main cause_2`, perl=TRUE)
+df1$`Main cause_2`[to_replace] <- "Dam/Levee"
+to_replace <- grepl("Dam+", df1$`Main cause_3`, perl=TRUE)
+df1$`Main cause_3`[to_replace] <- "Dam/Levee"
+
+
 to_replace <- grepl("ulhlaup", df1$`Main cause_1`, perl=TRUE)
-df1$`Main cause_1`[to_replace] <- "Jokulhlaup"
+df1$`Main cause_1`[to_replace] <- "ETC" # Jokulhlaup
 
 to_replace <- grepl("Heavy monso", df1$`Main cause_2`, perl=TRUE)
 df1$`Main cause_2`[to_replace] <- "Monsoonal Rain"
