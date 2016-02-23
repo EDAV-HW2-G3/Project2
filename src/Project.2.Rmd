@@ -1,0 +1,167 @@
+---
+title: 'Project 2: The Class'
+output: html_document
+---
+
+```{r warning=FALSE, echo=FALSE, results='hide', message=FALSE}
+# Data cleaning
+#install packages
+
+
+#install.packages(repos=c('http://cran.fhcrc.org/'),pkgs=c('ncdf4'),lib="/usr/lib/R/site-library/")
+#install.packages("chron")
+#install.packages("ncdf4")
+#install.packages("netcdf")
+
+#install.packages("RNetCDF")
+# Load libraries
+library(chron)
+library(ncdf4)
+library(RNetCDF)
+library(stringr)
+library(ggplot2)
+library(cowplot)
+library(devtools)
+library(Rcpp)
+library(httr)
+library(rCharts)
+library(rjson)
+library(vcd)
+library(ellipse)
+setwd("/Users/millenium/Documents/Columbia/repository/visualization-second-project")
+
+fname<-"data/NOAA_Daily_phi_500mb.nc"
+fid<-nc_open(fname)
+print(fid)
+#getting longtitute variable
+long<-ncvar_get(fid,"X")
+nlong<-dim(long)
+head(long)
+#getting latitute variable
+lat<-ncvar_get(fid, "Y",verbose = F)
+nlat<-dim(lat)
+head(lat)
+print(c(nlong, nlat))
+#getting time variable
+Time <- ncvar_get(fid, "T")
+tunits <- ncatt_get(fid, "T", "units")
+nt <- dim(Time)
+#Get the variable and its attributes, and verify the size of the array.
+phi.array <- ncvar_get(fid, "phi")
+dlname <- ncatt_get(fid, "phi", "long_name")
+dunits <- ncatt_get(fid, "phi", "units")
+fillvalue <- ncatt_get(fid, "phi", "_FillValue")
+dim(phi.array)
+# split the time units string into fields
+tustr <- strsplit(tunits$value, " ")
+tdstr <- strsplit(unlist(tustr)[3], "-")
+tmonth = as.integer(unlist(tdstr)[2])
+tday = as.integer(unlist(tdstr)[3])
+tyear = as.integer(unlist(tdstr)[1])
+Time<-chron(Time, origin = c(tmonth, tday, tyear))
+
+#look at single slice
+m<-1
+phi.slice<-phi.array[,,m]
+#create data.frame for first slice
+#convert to correct longitude degree format
+long<-long-180
+longlat<-expand.grid(long,lat)
+phi.vec <- as.vector(phi.slice)
+length(phi.vec)
+phi.df01 <- data.frame(cbind(longlat, phi.vec))
+names(phi.df01) <- c("longitude", "latitute", paste("phi", as.character(m), sep = "_"))
+head(phi.df01, 20)
+#write to csv file
+csvfile <- "cru_phi_1.csv"
+write.table(phi.df01, csvfile, row.names = FALSE, sep = ",")
+#convert the whole array to data frame
+phi.vec.long <- as.vector(phi.array)
+length(phi.vec.long)
+
+phi.mat <- matrix(phi.vec.long, nrow = nlong * nlat, ncol = nt)
+dim(phi.mat)
+#get first 10 rows and 10 columns
+phi.mat[1:10,1:10]
+
+#Create the second data frame from the phi.mat matrix with longtitute, latitude and time stamp
+longlat <- expand.grid(long, lat)
+phi.df02 <- data.frame(cbind(longlat, phi.mat))
+names(phi.df02) <- c("longitude","latitute",paste(Time))
+phi.df02[1:10,1:10]
+
+#Get annual mean, mtwa and mtco values and add them the second data frame.
+#maximum phi for every row: the maximum value for same grid over all period
+phi.df02$mtwa <- apply(phi.df02[3:nt], 1, max) 
+#minimum phi for every row: the minimumm value for same grid over all period
+phi.df02$mtco <- apply(phi.df02[3:nt], 1, min)  
+#Mean phi value for same grid over all period
+phi.df02$mat <- apply(phi.df02[3:nt], 1, mean)
+#get first 10 rows for max, min, and mean value
+phi.df02[1:10,c("mtwa", "mtco","mat")]
+
+dim(phi.df02)
+head(phi.df02)
+pca1 <- prcomp(phi.df02[-1,2:24875], scale=TRUE)
+dim(pca1$x)
+print(pca1$x[1:10,1:10])
+#write second data frame out as .csv file
+csvfile <- "cru_phi_2.csv"
+write.table(phi.df02, csvfile, row.names = FALSE, sep = ",")
+
+# Clean up variable names
+
+```
+
+```{r warning=FALSE, echo=FALSE, results='hide', message=FALSE}
+library(xlsx)
+library(reshape)
+library(data.table)
+library(splitstackshape)
+# Read xlsx file
+raw.data <- read.xlsx("data/GlobalFloodsRecord.xls", sheetName = "MasterTable")
+dataFload <- raw.data
+# Removed the last 6 columns, they have a blank space.
+dataFload<- dataFload[,1:(ncol(dataFload)-6)]
+head(dataFload$Main.cause)
+# Split tools column into multiple columns
+df1 <- cSplit(dataFload, "Main.cause", sep=",")[,lapply(.SD,as.character)]
+head(df1)
+
+```
+
+
+```{r echo=FALSE}
+library(maps)
+library(mapdata)
+library(maptools)  #for shapefiles
+library(scales)  #for transparency
+map(database = "world", regions = ".", col="lightgreen", bg="lightblue", fill=TRUE)  #add the adjacent parts of the 
+#filter_values=as.double(df1$Centroid.X) & df1$Centroid.Y > 0 & df1$severity >0
+#df1.plot=df1[filter_values,]
+points(as.double(df1$Centroid.X), as.double(df1$Centroid.Y), pch=19, col="red", cex=(as.double(df1$Severity)/10))  #plot my sample sites
+```
+
+```{r echo=FALSE}
+library(ggmap)
+library(ggplot2)
+library(cowplot)
+library(gridExtra)
+map.data=as.data.frame(cbind(as.double(df1$Centroid.X),as.double(df1$Centroid.Y),as.double(df1$Severity)))
+dim(map.data)
+colnames(map.data)=c('lon','lat','severity')
+continets=c('America','Asia','Europe','Africa')
+n <- length(continets)
+nCol <- floor(sqrt(n))
+plist=vector("list", n)
+i=1
+for (con in continets){
+  map <- get_map(location = con, zoom = 3,source ="google")
+  mapPoints <- ggmap(map) +
+    geom_point(aes(x = lon, y = lat, size = severity), data = map.data, alpha = .1)
+  plist[[i]] <-mapPoints
+  i=i+1
+}
+do.call("grid.arrange", c(plist, ncol=nCol))
+```
+
